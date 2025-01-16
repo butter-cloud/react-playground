@@ -7,7 +7,7 @@ export default function Login() {
 
   const handleLogin = () => {
     const data = {
-      nickname: nickname,
+      userName: nickname,
       role: role,
     }
 
@@ -22,6 +22,13 @@ export default function Login() {
           return
         }
         console.log(res.data.message)
+        console.log(res.data.data)
+        if (role == 'supporter'){
+          localStorage.setItem('supporterId', JSON.stringify(res.data.data))
+        } else {
+          localStorage.setItem('clientId', JSON.stringify(res.data.data))
+        }
+        window.location.href = '/'
       })
       .catch((err) => {
         console.error(err)
