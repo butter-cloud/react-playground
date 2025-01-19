@@ -5,22 +5,9 @@ import {
 } from '@aws-sdk/client-chime-sdk-meetings'
 import * as AWS from 'aws-sdk'
 import { useState } from 'react'
-import {
-  DeviceLabels,
-  LocalVideo,
-  useLocalVideo,
-  useMeetingManager,
-  VideoTileGrid,
-} from 'amazon-chime-sdk-component-library-react'
-import { MeetingSessionConfiguration } from 'amazon-chime-sdk-js'
 
 export const NewMeetingPage = () => {
-  const [meetingResponse, setMeetingResponse] = useState(null)
-  const [attendeeResponse, setAttendeeResponse] = useState(null)
-  const [meetingId, setMeetingId] = useState('')
-  const { toggleVideo } = useLocalVideo()
-
-  const meetingManager = useMeetingManager()
+  const [meetingId, setMeetingId] = useState(null)
 
   const client = new ChimeSDKMeetingsClient({
     region: 'ap-northeast-2',
@@ -38,14 +25,19 @@ export const NewMeetingPage = () => {
     const command = new CreateMeetingCommand(input)
     const res = await client.send(command)
     console.log('res: ', res)
-    setMeetingResponse(res)
+
+    localStorage.setItem('meeting', JSON.stringify(res.Meeting))
+    console.log('로컬스토리지에 meeting 정보를 저장했습니다.')
+
     setMeetingId(res.Meeting.MeetingId)
   }
 
   const handleCreateAttendee = async () => {
+    const randomString = Math.random().toString(36).substring(2, 8);
+
     const input = {
       MeetingId: meetingId, // required
-      ExternalUserId: 'new-user', // required
+      ExternalUserId: `user-${randomString}`, // required
       Capabilities: {
         // 'SendReceive' || 'Send' || 'Receive' || 'None'
         Audio: 'SendReceive',
@@ -57,26 +49,24 @@ export const NewMeetingPage = () => {
     const command = new CreateAttendeeCommand(input)
     const res = await client.send(command)
     console.log('res: ', res)
-    setAttendeeResponse(res)
+
+    localStorage.setItem('attendee', JSON.stringify(res.Attendee))
+    console.log('로컬스토리지에 attendee 정보를 저장했습니다.')
   }
 
-  const handleJoinMeeting = async () => {
-    const meetingSessionConfiguration = new MeetingSessionConfiguration(
-      meetingResponse.Meeting,
-      attendeeResponse.Attendee,
+  const joinMeeting = () => {
+    const width = 400 // 팝업의 가로 길이
+    const height = 600 // 팝업의 세로 길이
+
+    // 팝업을 부모 브라우저의 정 중앙에 위치시킨다.
+    const left = window.screenX + (window.outerWidth - width) / 2
+    const top = window.screenY + (window.outerHeight - height) / 2
+
+    window.open(
+      '/chime/meeting/join',
+      `New meeting session ${Date.now()}`,
+      `width=${width},height=${height},left=${left},top=${top}`,
     )
-    const options = {
-      deviceLabels: DeviceLabels.AudioAndVideo,
-    }
-
-    meetingManager.invokeDeviceProvider(DeviceLabels.AudioAndVideo)
-
-    await meetingManager.join(meetingSessionConfiguration, options)
-    await meetingManager.start()
-  }
-
-  const handleStopMeeting = async () => {
-    await meetingManager.leave()
   }
 
   return (
@@ -84,10 +74,7 @@ export const NewMeetingPage = () => {
       <h3>New Meeting Page</h3>
       <button onClick={handleCreateMeeting}>Create Meeting</button>
       <button onClick={handleCreateAttendee}>Create Attendee</button>
-      <button onClick={handleJoinMeeting}>Join Meeting</button>
-      <button onClick={handleStopMeeting}>Stop Meeting</button>
-      <LocalVideo style={{ width: '500px' }} />
-      <button onClick={toggleVideo}>toggle video</button>
+      <button onClick={joinMeeting}>Join Meeting</button>
     </>
   )
 }
